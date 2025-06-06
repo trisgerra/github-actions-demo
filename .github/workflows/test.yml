@@ -3,7 +3,7 @@ name: GitHub Actions CI
 on: [push, pull_request]
 
 jobs:
-  setup:
+  initialize:
     runs-on: ubuntu-latest
     outputs:
       node-modules-path: ${{ steps.cache.outputs.cache-hit }}
@@ -38,7 +38,7 @@ jobs:
           key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
       - run: npm run lint
 
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
     needs: setup
     steps:
