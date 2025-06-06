@@ -1,7 +1,7 @@
 name: Test Node.js application
 on: [push, pull_request]
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -12,13 +12,19 @@ jobs:
         with:
           node-version: '20'
       
+  lint:
+    runs-on: ubuntu-latest
+    steps:      
       - name: Lint code
         run: npm run lint
 
       - name: Install dependencies
         run: npm install
 
+  test:
+    runs-on: ubuntu-latest
+    needs: [build, lint]
+    steps:
       - name: Run tests
-        run: npm run test:coverage
-
+        run: npm test
       
