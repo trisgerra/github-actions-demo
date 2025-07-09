@@ -26,7 +26,6 @@ const keywords = [
   '●',
   'Expected:',
   'Received:',
-  '>'
 ];
 
 const noisePatterns = [
