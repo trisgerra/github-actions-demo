@@ -47,6 +47,7 @@ const noisePatterns = [
   /no warnings found/i, // no warnings found messages
   /no changes/i, // no changes messages
 ];
+
 const isRelevant = (line: string): boolean => {
   const lower = line.toLowerCase();
   return keywords.some(k => lower.includes(k)) &&
@@ -63,6 +64,9 @@ async function analyze(file: string) {
 
   let currentStep: Step = 'Unknown';
 
+  let collectingBlock = false;
+  let currentBlockLines: string[] = [];
+
   for await (const line of rl) {
     if (line.includes('===== INSTALL STEP LOG =====')) {
       currentStep = 'Install dependencies';
@@ -77,9 +81,46 @@ async function analyze(file: string) {
       continue;
     }
 
+    // Riconosci blocchi Jest
+    if (line.startsWith('● ')) {
+      if (currentBlockLines.length > 0) {
+        result.push({
+          step: currentStep,
+          message: currentBlockLines.join('\n'),
+        });
+        currentBlockLines = [];
+      }
+      collectingBlock = true;
+    }
+
+    if (collectingBlock) {
+      currentBlockLines.push(line);
+
+      // Blocchi Jest di solito finiscono con riga vuota o nuova sezione
+      if (line.trim() === '') {
+        result.push({
+          step: currentStep,
+          message: currentBlockLines.join('\n'),
+        });
+        currentBlockLines = [];
+        collectingBlock = false;
+      }
+
+      continue; // ignora filtro riga per riga durante raccolta blocco
+    }
+
+    // Se non stiamo raccogliendo un blocco, usa la logica originale
     if (isRelevant(line)) {
       result.push({ step: currentStep, message: line.trim() });
     }
+  }
+
+  // Fine file: se abbiamo un blocco ancora aperto
+  if (currentBlockLines.length > 0) {
+    result.push({
+      step: currentStep,
+      message: currentBlockLines.join('\n'),
+    });
   }
 
   console.log(JSON.stringify(result, null, 2));
