@@ -7,55 +7,64 @@ if (!filePath) {
   process.exit(1);
 }
 
-type Step = 'Install dependencies' | 'Run unit tests' | 'Run linter' | 'Unknown';
-
-type Message = {
-  step: Step;
-  type: 'lint' | 'test' | 'dependency' | 'general';
-  summary: string;
-  details: string;
-};
-
 const keywords = [
-  'error', 'failed', 'cannot', 'undefined', 'exception', 'stack trace',
-  'unexpected', 'severity', 'critical', 'fatal', 'unhandled', 'unresolved',
-  'unrecognized', 'unavailable', 'fix', '●', 'Expected:', 'Received:',
+  'error',
+  'failed',
+  'cannot',
+  'undefined',
+  'exception',
+  'stack trace',
+  'unexpected',
+  'severity',
+  'critical',
+  'fatal',
+  'unhandled',
+  'unresolved',
+  'unrecognized',
+  'unavailable',
+  'fix',
+  '✕',
+
 ];
 
 const noisePatterns = [
-  /^\s*$/,
-  /^\s*at\s/,
+  /^\s*$/, // empty lines
+  /^\s*at\s/, // stack trace line details
   /warning/i,
   /npm notice/,
   /npm WARN/,
-  /✓/,
-  /info:/,
-  /debug:/,
-  /verbose:/,
-  /skipped/i,
-  /passed/i,
-  /completed/i,
-  /success/i,
-  /no issues found/i,
-  /no (errors|warnings) found/i,
-  /no changes/i,
+  /✓/, // success indicators
+  /info:/, // informational messages
+  /debug:/, // debug messages
+  /verbose:/, // verbose messages
+  /skipped/i, // skipped tests or steps
+  /passed/i, // passed tests or steps
+  /completed/i, // completed tasks
+  /success/i, // success messages
+  /no issues found/i, // no issues found messages
+  /no errors found/i, // no errors found messages
+  /no warnings found/i, // no warnings found messages
+  /no changes/i, // no changes messages
 ];
 
 const isRelevant = (line: string): boolean => {
   const lower = line.toLowerCase();
   return keywords.some(k => lower.includes(k)) &&
-    !noisePatterns.some(p => p.test(line));
+         !noisePatterns.some(p => p.test(line));
 };
+
+type Step = 'Install dependencies' | 'Run unit tests' | 'Run linter' | 'Unknown';
 
 async function analyze(file: string) {
   const fileStream = fs.createReadStream(file);
   const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 
-  const result: Message[] = [];
+  const result: { step: Step; message: string }[] = [];
 
   let currentStep: Step = 'Unknown';
-  let collectingTestBlock = false;
-  let testBlockLines: string[] = [];
+
+  let collectingBlock = false;
+  let currentBlockLines: string[] = [];
 
   for await (const line of rl) {
     if (line.includes('===== INSTALL STEP LOG =====')) {
@@ -71,65 +80,49 @@ async function analyze(file: string) {
       continue;
     }
 
-    // === Blocchi di test Jest ===
+    // Riconosci blocchi Jest
     if (line.startsWith('● ')) {
-      if (testBlockLines.length > 0) {
+      if (currentBlockLines.length > 0) {
         result.push({
           step: currentStep,
-          type: 'test',
-          summary: testBlockLines[0],
-          details: testBlockLines.join('\n'),
+          message: currentBlockLines.join('\n'),
         });
-        testBlockLines = [];
+        currentBlockLines = [];
       }
-      collectingTestBlock = true;
+      collectingBlock = true;
     }
 
-    if (collectingTestBlock) {
-      testBlockLines.push(line);
+    if (collectingBlock) {
+      currentBlockLines.push(line);
 
+      // Blocchi Jest di solito finiscono con riga vuota o nuova sezione
       if (line.trim() === '') {
         result.push({
           step: currentStep,
-          type: 'test',
-          summary: testBlockLines[0],
-          details: testBlockLines.join('\n'),
+          message: currentBlockLines.join('\n'),
         });
-        testBlockLines = [];
-        collectingTestBlock = false;
+        currentBlockLines = [];
+        collectingBlock = false;
       }
 
-      continue;
+      continue; // ignora filtro riga per riga durante raccolta blocco
     }
 
-    // === Analisi per riga singola ===
+    // Se non stiamo raccogliendo un blocco, usa la logica originale
     if (isRelevant(line)) {
-      let type: Message['type'] = 'general';
-      if (currentStep === 'Run linter') type = 'lint';
-      else if (currentStep === 'Run unit tests') type = 'test';
-      else if (currentStep === 'Install dependencies') type = 'dependency';
-
-      result.push({
-        step: currentStep,
-        type,
-        summary: line.trim().slice(0, 100),
-        details: line.trim(),
-      });
+      result.push({ step: currentStep, message: line.trim() });
     }
   }
 
-  // Blocchi test rimasti alla fine
-  if (testBlockLines.length > 0) {
+  // Fine file: se abbiamo un blocco ancora aperto
+  if (currentBlockLines.length > 0) {
     result.push({
       step: currentStep,
-      type: 'test',
-      summary: testBlockLines[0],
-      details: testBlockLines.join('\n'),
+      message: currentBlockLines.join('\n'),
     });
   }
 
   console.log(JSON.stringify(result, null, 2));
-  fs.writeFileSync('analysis.json', JSON.stringify(result, null, 2));
 }
 
 analyze(filePath).catch(err => {
