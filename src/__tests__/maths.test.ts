@@ -6,6 +6,9 @@ import {
 } from '../maths';
 
 describe('maths', () => {
+
+    test('make it fail', () => expect(true).toBe(false));
+    
     test.each([
         { a: 1, b: 2, expected: 3 },
         { a: -1, b: 1, expected: 0 },
