@@ -22,7 +22,11 @@ const keywords = [
   'unresolved',
   'unrecognized',
   'unavailable',
-  'fix'
+  'fix',
+  '●',
+  'Expected:',
+  'Received:',
+  '>'
 ];
 
 const noisePatterns = [
