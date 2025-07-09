@@ -22,6 +22,7 @@ jobs:
           mkdir -p logs
           echo "--- npm install start ---"
           npm install > logs/install.log 2>&1 || true
+          cat logs/install.log
           echo "--- npm install end ---"
 
       - name: Run unit tests
@@ -29,6 +30,7 @@ jobs:
           mkdir -p logs
           echo "--- npm test start ---"
           npm run test > logs/test.log 2>&1 || true
+                    cat logs/install.log
           echo "--- npm test end ---"
 
       - name: Run linter
