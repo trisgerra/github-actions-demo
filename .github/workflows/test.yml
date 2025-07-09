@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir -p logs
           echo "--- npm test start ---"
-          npm run test > logs/test.log 2>&1 || true
+          npm run test 2>&1 | tee logs/test.log || true
           cat logs/test.log
           echo "--- npm test end ---"
 
