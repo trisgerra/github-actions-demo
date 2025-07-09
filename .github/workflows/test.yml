@@ -19,18 +19,21 @@ jobs:
 
       - name: Install dependencies
         run: |
+          mkdir -p logs
           echo "--- npm install start ---"
           npm install > logs/install.log 2>&1 || true
           echo "--- npm install end ---"
 
       - name: Run unit tests
         run: |
+          mkdir -p logs
           echo "--- npm test start ---"
           npm run test > logs/test.log 2>&1 || true
           echo "--- npm test end ---"
 
       - name: Run linter
         run: |
+          mkdir -p logs
           echo "--- npm lint start ---"
           npm run lint > logs/lint.log 2>&1 || true
           echo "--- npm lint end ---"
