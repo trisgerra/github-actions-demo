@@ -1,5 +1,3 @@
-// analyzer.ts
-
 import * as fs from 'fs';
 import * as readline from 'readline';
 
@@ -33,31 +31,58 @@ const noisePatterns = [
   /warning/i,
   /npm notice/,
   /npm WARN/,
+  /✓/, // success indicators
+  /info:/, // informational messages
+  /debug:/, // debug messages
+  /verbose:/, // verbose messages
+  /skipped/i, // skipped tests or steps
+  /passed/i, // passed tests or steps
+  /completed/i, // completed tasks
+  /success/i, // success messages
+  /no issues found/i, // no issues found messages
+  /no errors found/i, // no errors found messages
+  /no warnings found/i, // no warnings found messages
+  /no changes/i, // no changes messages
 ];
-
 const isRelevant = (line: string): boolean => {
   const lower = line.toLowerCase();
   return keywords.some(k => lower.includes(k)) &&
          !noisePatterns.some(p => p.test(line));
 };
 
+type Step = 'Install dependencies' | 'Run unit tests' | 'Run linter' | 'Unknown';
+
 async function analyze(file: string) {
   const fileStream = fs.createReadStream(file);
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity,
-  });
+  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 
-  console.log('📊 Filtered Log Output:\n');
+  const result: { step: Step; message: string }[] = [];
+
+  let currentStep: Step = 'Unknown';
 
   for await (const line of rl) {
+    if (line.includes('===== INSTALL STEP LOG =====')) {
+      currentStep = 'Install dependencies';
+      continue;
+    }
+    if (line.includes('===== TEST STEP LOG =====')) {
+      currentStep = 'Run unit tests';
+      continue;
+    }
+    if (line.includes('===== LINT STEP LOG =====')) {
+      currentStep = 'Run linter';
+      continue;
+    }
+
     if (isRelevant(line)) {
-      console.log(line);
+      result.push({ step: currentStep, message: line.trim() });
     }
   }
+
+  console.log(JSON.stringify(result, null, 2));
 }
 
 analyze(filePath).catch(err => {
-  console.error('❌ Error reading file:', err.message);
+  console.error('❌ Error:', err.message);
   process.exit(1);
 });
