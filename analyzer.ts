@@ -17,6 +17,14 @@ const keywords = [
   'exception',
   'stack trace',
   'unexpected',
+  'severity',
+  'critical',
+  'fatal',
+  'unhandled',
+  'unresolved',
+  'unrecognized',
+  'unavailable',
+  'fix'
 ];
 
 const noisePatterns = [
